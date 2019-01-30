@@ -93,6 +93,8 @@
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
 
+#define EVK_NINA_B1 1
+
 #define DEAD_BEEF   0xDEADBEEF          /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 #define SCHED_MAX_EVENT_DATA_SIZE   MAX(APP_TIMER_SCHED_EVENT_DATA_SIZE, BLE_STACK_HANDLER_SCHED_EVT_SIZE) /**< Maximum size of scheduler events. */
 #define SCHED_QUEUE_SIZE            60  /**< Maximum number of events in the scheduler queue. */
@@ -598,6 +600,7 @@ static void thingy_init(void)
     m_motion_init_t          motion_params;
     m_ble_init_t             ble_params;
 
+#ifndef EVK_NINA_B1
     /**@brief Initialize the TWI manager. */
     err_code = twi_manager_init(APP_IRQ_PRIORITY_THREAD);
     APP_ERROR_CHECK(err_code);
@@ -613,7 +616,7 @@ static void thingy_init(void)
     /**@brief Initialize motion module. */
     motion_params.p_twi_instance = &m_twi_sensors;
 
-
+#endif
     m_nus_init(&m_ble_service_handles[0], nus_command_handler);
 
     /**@brief Initialize BLE handling module. */
@@ -625,12 +628,13 @@ static void thingy_init(void)
     err_code = m_ble_init(&ble_params);
     APP_ERROR_CHECK(err_code);
 
+#ifndef EVK_NINA_B1
     ble_uis_led_t led_breath_red = {.mode = BLE_UIS_LED_MODE_BREATHE, 
                                     .data.mode_breathe.color_mix = DRV_EXT_LIGHT_COLOR_RED,
                                     .data.mode_breathe.intensity  = DEFAULT_LED_INTENSITY_PERCENT,
                                     .data.mode_breathe.delay = DEFAULT_LED_OFF_TIME_MS};
      led_set(&led_breath_red, NULL);
-
+#endif
 }
 
 static void button_evt_handler(uint8_t pin_no, uint8_t button_action)
@@ -700,6 +704,7 @@ static void board_init(void)
         NRF_LOG_WARNING("FW compiled for depricated Thingy HW v0.9.0 \r\n");
     #endif
 
+#ifndef EVK_NINA_B1
     static const nrf_drv_twi_config_t twi_config =
     {
         .scl                = TWI_SCL,
@@ -719,6 +724,7 @@ static void board_init(void)
     
     err_code = support_func_configure_io_startup(&ext_gpio_init);
     APP_ERROR_CHECK(err_code);
+#endif
 
     nrf_delay_ms(100);
 }
@@ -759,8 +765,11 @@ int main(void)
     board_init();
     thingy_init();
     button_init();
+    __LOG(LOG_SRC_APP, LOG_LEVEL_INFO, "mesh_core_setup\n");
     mesh_core_setup();
+    __LOG(LOG_SRC_APP, LOG_LEVEL_INFO, "access_setup\n");
     access_setup();
+    __LOG(LOG_SRC_APP, LOG_LEVEL_INFO, "access_setup done\n");
 
 
     for (;;)

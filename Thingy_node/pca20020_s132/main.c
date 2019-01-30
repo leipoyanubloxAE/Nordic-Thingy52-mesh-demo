@@ -46,6 +46,7 @@
 #include <stdint.h>
 #include <float.h>
 #include <string.h>
+#include "boards.h"
 #include "nordic_common.h"
 #include "nrf.h"
 #include "ble_hci.h"
@@ -88,6 +89,13 @@
 
 simple_thingy_server_t m_server;
 
+#define EVK_NINA_B1 1
+#ifdef EVK_NINA_B1
+#define LED_R 0 /* Red LED index */
+#define LED_G 2 /* Green LED index */
+#define LED_B 1 /* Blue LED index */
+#endif
+
 #define  NRF_LOG_MODULE_NAME "main          "
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
@@ -121,9 +129,14 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info)
 static void sensor_timer_handler()
 {
     NRF_LOG_INFO("sensor log start\r\n");
+    #ifndef EVK_NINA_B1
     drv_humidity_sample();
     float humidity = drv_humidity_get();
     float temperature = drv_humidity_temp_get();
+    #else
+    float humidity = 1.1;
+    float temperature = 25.0;
+    #endif
     sensor_reading_t sensor_data = {
       .humidity = humidity,
       .temperature = temperature
@@ -133,7 +146,9 @@ static void sensor_timer_handler()
 
 void thingy_led_set(simple_thingy_server_t * server, ble_uis_led_t led_config)
 {
+    #ifndef EVK_NINA_B1
     led_set(&led_config, NULL);
+    #endif
     server->present_led_status = led_config;
 }
 
@@ -176,6 +191,7 @@ static void thingy_init(void)
     m_motion_init_t          motion_params;
     m_ble_init_t             ble_params;
 
+#ifndef EVK_NINA_B1
     /**@brief Initialize the TWI manager. */
     err_code = twi_manager_init(APP_IRQ_PRIORITY_LOWEST);
     APP_ERROR_CHECK(err_code);
@@ -199,6 +215,7 @@ static void thingy_init(void)
     init_stat.data.mode_breathe.intensity = 100;
     init_stat.data.mode_breathe.delay = 100;
     thingy_led_set(&m_server, init_stat);
+#endif 
 
 }
 
@@ -216,6 +233,14 @@ static void board_init(void)
         NRF_LOG_WARNING("FW compiled for depricated Thingy HW v0.9.0 \r\n");
     #endif
 
+#ifdef EVK_NINA_B1
+    bsp_board_leds_init();
+    /* Turn off all LEDs */
+    for (int i = 0; i < LEDS_NUMBER; i++)
+    {
+       bsp_board_led_off(i);
+    }
+#else
     static const nrf_drv_twi_config_t twi_config =
     {
         .scl                = TWI_SCL,
@@ -235,13 +260,14 @@ static void board_init(void)
     
     err_code = support_func_configure_io_startup(&ext_gpio_init);
     APP_ERROR_CHECK(err_code);
-
+#endif
     nrf_delay_ms(100);
 }
 
 static void configuration_complete(void * p_unused)
 {
     ble_uis_led_t led_cmd;
+    __LOG(LOG_SRC_APP, LOG_LEVEL_INFO, "Successfully provisioned");
     led_cmd.mode = BLE_UIS_LED_MODE_CONST;
     led_cmd.data.mode_const.r = 0x0f;
     led_cmd.data.mode_const.g = 0x0f;
@@ -261,8 +287,25 @@ static ble_uis_led_t led_get_cb()
 
 static ble_uis_led_t led_set_cb(const simple_thingy_server_t * server, ble_uis_led_t led_config)
 {
-    __LOG(LOG_SRC_APP, LOG_LEVEL_INFO, "set led status\r\n");
+    __LOG(LOG_SRC_APP, LOG_LEVEL_INFO, "set led status: mode: %d data: %d %d %d\r\n", led_config.mode, led_config.data.mode_const.r, led_config.data.mode_const.g, led_config.data.mode_const.b);
+    #ifdef EVK_NINA_B1
+    if( (led_config.mode==BLE_UIS_LED_MODE_CONST) && led_config.data.mode_const.r!=0)
+      bsp_board_led_on(LED_R);
+    else
+      bsp_board_led_off(LED_R);
+
+    if( (led_config.mode==BLE_UIS_LED_MODE_CONST) && led_config.data.mode_const.g!=0)
+      bsp_board_led_on(LED_G);
+    else
+      bsp_board_led_off(LED_G);
+
+    if( (led_config.mode==BLE_UIS_LED_MODE_CONST) && led_config.data.mode_const.b!=0)
+      bsp_board_led_on(LED_B);
+    else
+      bsp_board_led_off(LED_B);
+    #else
     thingy_led_set(&m_server, led_config);
+    #endif
     return led_config;
     
 }
@@ -338,6 +381,7 @@ void drv_humidity_evt_handler(drv_humidity_evt_t evt)
 void sensor_init()
 {
     ret_code_t err_code = NRF_SUCCESS;
+#ifndef EVK_NINA_B1
     static const nrf_drv_twi_config_t twi_config = 
     {
         .scl = TWI_SCL,
@@ -356,7 +400,7 @@ void sensor_init()
     };
     ERROR_CHECK(drv_humidity_init(&init_params));
     ERROR_CHECK(drv_humidity_enable());
-
+#endif
     app_timer_create(&m_sensor_timer_id, APP_TIMER_MODE_REPEATED, sensor_timer_handler);
 
 }

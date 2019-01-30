@@ -1,4 +1,15 @@
 # Thingy Mesh Demo v0.1
+### Porting to EVK-NINA-B1
+This fork is to port the Thingy Mesh demo to EVK-NINA-B1.
+
+Node devices will be automatically provisioned to Bridge device. 
+
+Press SW2 button on Bridge device to toggle the LED on the Node devices.
+
+Note that 1 additional step for compilation after 1 is to copy the pca10040.h in this repo to nRF5 SDK sdk_components/boards.
+
+The precompiled hex files has been built for EVK-NINA-B1. 
+
 ### Overview
 This is a short guide for how to deploy the Thingy mesh demo into Thingy devices.
 The current Thingy mesh demo consists with one Thingy device as bridge and up to 10 Thingy devices as nodes.(The maximum number of nodes can be configured)
